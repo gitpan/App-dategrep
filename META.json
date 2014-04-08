@@ -1,0 +1,31 @@
+{
+   "abstract" : "print lines matching ranges of dates",
+   "author" : [],
+   "dynamic_config" : 1,
+   "generated_by" : "Module::Build version 0.4205",
+   "license" : [
+      "unknown"
+   ],
+   "meta-spec" : {
+      "url" : "http://search.cpan.org/perldoc?CPAN::Meta::Spec",
+      "version" : "2"
+   },
+   "name" : "App-dategrep",
+   "prereqs" : {
+      "configure" : {
+         "requires" : {
+            "Date::Manip" : "0",
+            "Getopt::Long" : "0",
+            "Module::Build" : "0",
+            "Pod::Usage" : "0"
+         }
+      },
+      "test" : {
+         "requires" : {
+            "Test::Command::Simple" : "0"
+         }
+      }
+   },
+   "release_status" : "stable",
+   "version" : "0.01"
+}

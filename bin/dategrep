@@ -1,0 +1,332 @@
+#!/usr/bin/perl
+
+use strict;
+use warnings;
+use Date::Manip;
+use Pod::Usage;
+use Getopt::Long qw(:config pass_through);
+use Fcntl ":seek";
+use File::Basename qw(basename);
+
+our $VERSION = '0.01';
+
+my $app = basename($0);
+
+sub run {
+
+    my %named_formats = (
+        'rsyslog' => "%b %e %H:%M:%S",
+        'apache'  => "%d/%b/%Y:%T %z",
+    );
+
+    my %options = ( format => $ENV{DATEGREP_DEFAULT_FORMAT}, );
+
+    GetOptions( \%options, 'start|from=s', 'end|to=s', 'format=s',
+        'last-minutes=i','multiline!', 'help|?', 'man' )
+      or pod2usage(2);
+
+    pod2usage(1) if $options{help};
+    pod2usage( -exitstatus => 0, -verbose => 2 ) if $options{man};
+
+    if ( not defined $options{'format'} ) {
+        die "$app: --format is a required parameter\n";
+    }
+
+    if ( exists $named_formats{ $options{'format'} } ) {
+        $options{'format'} = $named_formats{ $options{'format'} };
+    }
+
+    my ( $start, $end, $error ) = ( 0, time() );
+
+    if ( defined $options{'start'} ) {
+        ( $start, $error ) = date_to_epoch( $options{'start'} );
+        die "$app: Illegal start time: $error\n" if $error;
+    }
+
+    if ( defined $options{'end'} ) {
+        ( $end, $error ) = date_to_epoch( $options{'end'} );
+        die "$app: Illegal end time: $error\n" if $error;
+    }
+
+    if ( defined $options{'last-minutes'} ) {
+        my $now = Date::Manip::Date->new("now");
+        $now->set( 's', 0 );
+        my $ago =
+          Date::Manip::Date->new( $options{'last-minutes'} . "minutes ago" );
+        $ago->set( 's', 0 );
+        ( $start, $end ) =
+          ( $ago->secs_since_1970_GMT(), $now->secs_since_1970_GMT() );
+    }
+
+    if ( $end < $start ) {
+        die "$app: Starting time after end time\n";
+    }
+
+    for my $filename (@ARGV) {
+        if ( $filename eq '-' ) {
+            open( my $fh, $filename );
+	    my $last_epoch=0;
+          LINE: while ( my $line = <$fh> ) {
+                chomp($line);
+                my ( $epoch, $error ) =
+                  date_to_epoch( $line, $options{'format'} );
+                if ( !$epoch ) {
+                    if ($options{'multiline'}) {
+			    print "$line\n" if $last_epoch >= $start;
+			    next LINE;
+		    }
+                    die "$app: Unparsable line: $line\n";
+                }
+                last if $epoch >= $end;
+                print "$line\n" if $epoch >= $start;
+		$last_epoch = $epoch;
+            }
+            next;
+        }
+        open( my $fh, '<', $filename ) or die "$app: Can't open $filename: $!\n";
+
+        my $test_line = <$fh>;
+        if ( defined($test_line) ) {
+            my ( $epoch, $error ) =
+              date_to_epoch( $test_line, $options{'format'} );
+            if ($error) {
+                die "$app: No date found in first line: $error\n";
+            }
+            seek( $fh, 0, SEEK_SET );
+
+            my $tell_beg = search( $fh, $start, $options{'format'},
+                multiline => $options{multiline} );
+
+            if ( defined $tell_beg ) {
+                my $tell_end = search(
+                    $fh, $end, $options{'format'},
+                    min_byte  => $tell_beg,
+                    multiline => $options{multiline}
+                );
+                seek( $fh, $tell_beg, SEEK_SET );
+                while (<$fh>) {
+                    last if defined($tell_end) && ( tell() > $tell_end );
+                    print;
+                }
+            }
+        }
+    }
+}
+
+if ( not caller ) {
+    run();
+    exit 0;
+}
+
+sub date_to_epoch {
+    my ( $str, $format ) = @_;
+    my $date = Date::Manip::Date->new();
+    my $error =
+      defined($format)
+      ? $date->parse_format( $format, $str )
+      : $date->parse($str);
+    if ($error) {
+        return ( undef, $date->err );
+    }
+    return ( $date->secs_since_1970_GMT() );
+}
+
+# Modified version of File::SortedSeek::_look
+
+sub search {
+    my ( $fh, $key, $format, %options ) = @_;
+    return undef if not defined $key;
+    my @stat = stat($fh) or return undef;
+    my ( $size, $blksize ) = @stat[ 7, 11 ];
+    $blksize ||= 8192;
+    my $min_byte = $options{min_byte};
+    my $multiline = $options{multiline};
+
+    # find the right block
+    my ( $min, $max, $mid ) = ( 0, int( $size / $blksize ) );
+
+    if (defined $min_byte) {
+        $min = int( $min_byte / $blksize );
+    }
+
+    BLOCK: while ( $max - $min > 1 ) {
+        $mid = int( ( $max + $min ) / 2 );
+        seek( $fh, $mid * $blksize, 0 ) or return undef;
+        <$fh> if $mid;    # probably a partial line
+        LINE: while ( my $line = <$fh> ) {
+            my ($epoch) = date_to_epoch( $line, $format );
+            if ( !$epoch ) {
+                next LINE if $multiline;
+
+		chomp($line);
+                die "Unparsable line: $line\n";
+            }
+	    if ( $multiline ) {
+		my $byte  = tell($fh);
+		$mid = int( $byte / $blksize );
+	    }
+            $epoch < $key
+              ? $min = $mid
+              : $max = $mid;
+	    next BLOCK;
+        }
+    }
+
+    # find the right line
+    $min *= $blksize;
+    seek( $fh, $min, 0 ) or return undef;
+    <$fh> if $min;    # probably a partial line
+    my $prev_min = $min;
+    for ( ; ; ) {
+        $min = tell($fh);
+        defined( my $line = <$fh> ) or last;
+        my ($epoch) = date_to_epoch( $line, $format );
+        if ( !$epoch ) {
+	    next if $multiline;
+            chomp($line);
+            die "Unparsable line: $line\n";
+        }
+        if ( $epoch >= $key ) {
+            seek( $fh, $min, 0 );
+            return $min;
+        }
+        $prev_min = $min;
+    }
+    return undef;
+}
+
+__END__
+
+=pod
+
+=head1 NAME
+
+dategrep - print lines matching ranges of dates
+
+=head1 SYNOPSIS
+
+  dategrep --start "12:00" --end "12:15" --format "%b %d %H:%M:%S" syslog
+  dategrep --end "12:15" --format "%b %d %H:%M:%S" syslog
+  dategrep --last-minutes 5 --format "%b %d %H:%M:%S" syslog
+  dategrep --last-minutes 5 --format rsyslog syslog
+  cat syslog | dategrep --end "12:15" -
+
+=head1 DESCRIPTION
+
+dategrep searches the named input files for lines matching a date range
+and prints them to stdout.
+
+If dategrep works on a seekable file, it can do a binary search to find
+the first and last line to print pretty efficiently. dategrep can also
+read from stdin if one the filename arguments is just a hyphen, but in
+this case it has to parse every single line which will be slower.
+
+=head1 OPTIONS
+
+=over 4
+
+=item --start|--from DATESPEC
+
+Print all lines from DATESPEC inclusively. Defauls to Jan 1, 1970 00:00:00 GMT.
+See
+L<VALID-DATE-FORMATS|https://metacpan.org/pod/distribution/Date-Manip/lib/Date/Manip/Date.pod#VALID-DATE-FORMATS>
+for a list of possible formats for DATESPEC.
+
+=item --end|--to DATESPEC
+
+Print all lines until DATESPEC exclusively. Default to the current time. See
+L<VALID-DATE-FORMATS|https://metacpan.org/pod/distribution/Date-Manip/lib/Date/Manip/Date.pod#VALID-DATE-FORMATS>
+for a l
+ist of possible formats for DATESPEC.
+
+=item --last-minutes MINUTES
+
+Print all lines from MINUTES minutes ago until the beginning of the current
+minute. So if we have 19:25:43 and MINUTES is five, dategrep will print all
+lines from 19:20:00 to 19:24:59.
+
+=item --format FORMAT
+
+Defines a strftime-based FORMAT that is used to parse the input
+lines for a date. The first date found on a line is used. The
+list of possible escape sequences can be found under L<PRINTF
+DIRECTIVES|https://metacpan.org/pod/distribution/Date-Manip/lib/Date/Manip/Date.pod#PRINTF-DIRECTIVES>.
+
+This is a required parameter. Alternatively you can supply the format
+via the environment variable I<DATEGREP_DEFAULT_FORMAT>.
+
+Additionally, dategrep supports named formats:
+
+=over 4
+
+=item * rsyslog "%b %d %H:%M:%S"
+
+=item * apache "%d/%b/%Y:%T %z"
+
+=back
+
+=item --multiline
+
+Print all lines between the start and end line even if they are not timestamped.
+
+=item --help 
+
+Shows a short help message
+
+=item --man
+
+Shows the complete man page in your pager.
+
+=back
+
+=head1 ENVIRONMENT
+
+=over 4
+
+=item DATEGREP_DEFAULT_FORMAT
+
+Default for the I<--format> parameter. The syntax is described there.
+
+=back
+
+=head1 INSTALLATION
+
+It is possible to install this script via perl normal install routines. 
+
+  perl Build.PL
+  ./Build
+  ./Build install
+
+Or you can just copy the script somewhere in your path and install its only
+dependency Date::Manip. In Debian you just need the following:
+
+  apt-get install libdate-manip-perl
+
+=head1 LIMITATION
+
+dategrep expects the files to be sorted. If the timestamps are not
+ascending, dategrep might be exiting before the last line in its date
+range is printed.
+
+=head1 SEE ALSO
+
+L<https://metacpan.org/pod/Date::Manip>
+
+=head1 COPYRIGHT AND LICENSE
+
+Copyright 2014 Mario Domgoergen L<E<lt>mario@domgoergen.comE<gt>>
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+=cut

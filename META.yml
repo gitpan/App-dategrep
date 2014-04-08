@@ -1,0 +1,19 @@
+---
+abstract: 'print lines matching ranges of dates'
+author:
+  - unknown
+build_requires:
+  Test::Command::Simple: 0
+configure_requires:
+  Date::Manip: 0
+  Getopt::Long: 0
+  Module::Build: 0
+  Pod::Usage: 0
+dynamic_config: 1
+generated_by: 'Module::Build version 0.4205, CPAN::Meta::Converter version 2.120351'
+license: unknown
+meta-spec:
+  url: http://module-build.sourceforge.net/META-spec-v1.4.html
+  version: 1.4
+name: App-dategrep
+version: 0.01
