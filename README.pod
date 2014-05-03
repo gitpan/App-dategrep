@@ -1,13 +1,3 @@
-#!/usr/bin/perl
-
-use strict;
-use warnings;
-use App::dategrep;
-
-exit App::dategrep::run();
-
-__END__
-
 =pod
 
 =for stopwords dategrep DATESPEC datespec syslog apache blocksize zcat bzcat rsyslog timestamped logrotate ARGV Domgoergen merchantability configfile !syslog
@@ -194,4 +184,3 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-=cut

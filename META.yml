@@ -1,19 +1,27 @@
 ---
-abstract: 'print lines matching ranges of dates'
+abstract: 'grep for dates'
 author:
   - unknown
 build_requires:
-  Test::Command::Simple: 0
+  Date::Manip: '0'
+  FindBin: '0'
+  Getopt::Long: '0'
+  POSIX: '0'
+  Pod::Usage: '0'
+  Test::MockTime: '0'
+  Test::More: '0'
+  Test::Output: '0'
 configure_requires:
-  Date::Manip: 0
-  Getopt::Long: 0
-  Module::Build: 0
-  Pod::Usage: 0
+  Module::Build: '0'
 dynamic_config: 1
-generated_by: 'Module::Build version 0.4205, CPAN::Meta::Converter version 2.120351'
+generated_by: 'Module::Build version 0.4205, CPAN::Meta::Converter version 2.140640'
 license: unknown
 meta-spec:
   url: http://module-build.sourceforge.net/META-spec-v1.4.html
-  version: 1.4
+  version: '1.4'
 name: App-dategrep
-version: 0.01
+provides:
+  App::dategrep:
+    file: lib/App/dategrep.pm
+    version: '0.10'
+version: '0.10'

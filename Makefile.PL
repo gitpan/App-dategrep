@@ -2,13 +2,17 @@
 use ExtUtils::MakeMaker;
 WriteMakefile
 (
-  'PL_FILES' => {},
+  'NAME' => 'App::dategrep',
+  'VERSION_FROM' => 'lib/App/dategrep.pm',
+  'PREREQ_PM' => {
+                   'Date::Manip' => 0,
+                   'Getopt::Long' => 0,
+                   'Pod::Usage' => 0
+                 },
   'INSTALLDIRS' => 'site',
-  'NAME' => 'main',
   'EXE_FILES' => [
                    'bin/dategrep'
                  ],
-  'VERSION_FROM' => 'bin/dategrep',
-  'PREREQ_PM' => {}
+  'PL_FILES' => {}
 )
 ;

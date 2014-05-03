@@ -1,5 +1,5 @@
 {
-   "abstract" : "print lines matching ranges of dates",
+   "abstract" : "grep for dates",
    "author" : [],
    "dynamic_config" : 1,
    "generated_by" : "Module::Build version 0.4205",
@@ -12,20 +12,34 @@
    },
    "name" : "App-dategrep",
    "prereqs" : {
-      "configure" : {
+      "build" : {
          "requires" : {
             "Date::Manip" : "0",
             "Getopt::Long" : "0",
-            "Module::Build" : "0",
             "Pod::Usage" : "0"
+         }
+      },
+      "configure" : {
+         "requires" : {
+            "Module::Build" : "0"
          }
       },
       "test" : {
          "requires" : {
-            "Test::Command::Simple" : "0"
+            "FindBin" : "0",
+            "POSIX" : "0",
+            "Test::MockTime" : "0",
+            "Test::More" : "0",
+            "Test::Output" : "0"
          }
       }
    },
+   "provides" : {
+      "App::dategrep" : {
+         "file" : "lib/App/dategrep.pm",
+         "version" : "0.10"
+      }
+   },
    "release_status" : "stable",
-   "version" : "0.01"
+   "version" : "0.10"
 }
