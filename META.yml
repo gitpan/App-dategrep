@@ -12,7 +12,7 @@ build_requires:
   Test::More: '0'
   Test::Output: '0'
 configure_requires:
-  Module::Build: '0'
+  Module::Build: '0.4004'
 dynamic_config: 1
 generated_by: 'Module::Build version 0.4205, CPAN::Meta::Converter version 2.140640'
 license: unknown
@@ -23,5 +23,8 @@ name: App-dategrep
 provides:
   App::dategrep:
     file: lib/App/dategrep.pm
-    version: '0.10'
-version: '0.10'
+    version: '0.12'
+resources:
+  bugtracker: https://github.com/mdom/dategrep/issues
+  repository: https://github.com/mdom/dategrep
+version: '0.12'

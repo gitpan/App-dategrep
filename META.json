@@ -21,7 +21,7 @@
       },
       "configure" : {
          "requires" : {
-            "Module::Build" : "0"
+            "Module::Build" : "0.4004"
          }
       },
       "test" : {
@@ -37,9 +37,17 @@
    "provides" : {
       "App::dategrep" : {
          "file" : "lib/App/dategrep.pm",
-         "version" : "0.10"
+         "version" : "0.12"
       }
    },
    "release_status" : "stable",
-   "version" : "0.10"
+   "resources" : {
+      "bugtracker" : {
+         "web" : "https://github.com/mdom/dategrep/issues"
+      },
+      "repository" : {
+         "url" : "https://github.com/mdom/dategrep"
+      }
+   },
+   "version" : "0.12"
 }

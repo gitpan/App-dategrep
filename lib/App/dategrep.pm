@@ -2,7 +2,7 @@ use strict;
 use warnings;
 
 package App::dategrep;
-use Date::Manip;
+use Date::Manip::Date;
 use Pod::Usage;
 use Getopt::Long;
 use Fcntl ":seek";
@@ -10,7 +10,7 @@ use File::Basename qw(basename);
 use base 'Exporter';
 our @EXPORT_OK = qw(run);
 
-our $VERSION = '0.10';
+our $VERSION = '0.12';
 
 our $app;
 
@@ -74,13 +74,19 @@ sub run {
     my ( $start, $end, $error ) = ( 0, time() );
 
     if ( defined $options{'start'} ) {
-        ( $start, $error ) = date_to_epoch( $options{'start'} );
-        return error("Illegal start time: $error") if $error;
+        ( $start ) = date_to_epoch( $options{'start'} );
+	if ( not defined $start ) {
+		( $start ) = date_to_epoch( $options{'start'}, $options{'format'} );
+	}
+        return error("Illegal start time.") if not defined $start;
     }
 
     if ( defined $options{'end'} ) {
-        ( $end, $error ) = date_to_epoch( $options{'end'} );
-        return error("Illegal end time: $error") if $error;
+        ( $end ) = date_to_epoch( $options{'end'} );
+	if ( not defined $end ) {
+		( $end ) = date_to_epoch( $options{'end'}, $options{'format'} );
+	}
+        return error("Illegal end time.") if not defined $end;
     }
 
     if ( defined $options{'last-minutes'} ) {
@@ -279,13 +285,12 @@ sub fh_iterator {
 
 sub loadconfig {
     my $configfile = shift;
-    if ( not defined $configfile ) {
+    if ( not $configfile and $ENV{HOME} ) {
         $configfile = "$ENV{HOME}/.dategreprc";
     }
-    my %config;
     return if !-e $configfile;
 
-    my $section;
+    my ( %config, $section );
     open( my $cfg_fh, '<', $configfile )
       or die "Can't open config file: $!\n";
     while (<$cfg_fh>) {
