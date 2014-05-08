@@ -10,7 +10,7 @@ use File::Basename qw(basename);
 use base 'Exporter';
 our @EXPORT_OK = qw(run);
 
-our $VERSION = '0.12';
+our $VERSION = '0.14';
 
 our $app;
 
@@ -288,7 +288,9 @@ sub loadconfig {
     if ( not $configfile and $ENV{HOME} ) {
         $configfile = "$ENV{HOME}/.dategreprc";
     }
-    return if !-e $configfile;
+    if ( not defined $configfile or not -e $configfile ) {
+        return;
+    }
 
     my ( %config, $section );
     open( my $cfg_fh, '<', $configfile )
