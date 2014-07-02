@@ -1,3 +1,7 @@
+0.15 2014-07-02
+
+ - skip a test based on tzset on windows, where this call is not implemented
+
 0.12 2014-05-06
 
  - runs on older perls

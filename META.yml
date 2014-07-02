@@ -23,8 +23,8 @@ name: App-dategrep
 provides:
   App::dategrep:
     file: lib/App/dategrep.pm
-    version: '0.14'
+    version: '0.15'
 resources:
   bugtracker: https://github.com/mdom/dategrep/issues
   repository: https://github.com/mdom/dategrep
-version: '0.14'
+version: '0.15'
